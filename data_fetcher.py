@@ -7,9 +7,9 @@ import os
 import pandas as pd
 import random
 import time
-import urllib2
+import urllib.request
 
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from datetime import datetime
 
 DATA_DIR = "data"
@@ -22,22 +22,26 @@ SP500_LIST_PATH = os.path.join(DATA_DIR, "constituents-financials.csv")
 
 
 def _download_sp500_list():
-    if os.path.exists(SP500_LIST_PATH):
-        return
+    #     return
+    # if os.path.exists(S500_LIST_PATH):
 
-    f = urllib2.urlopen(SP500_LIST_URL)
-    print "Downloading ...", SP500_LIST_URL
-    with open(SP500_LIST_PATH, 'w') as fin:
-        print >> fin, f.read()
+    f = urllib.request.urlopen(SP500_LIST_URL)
+    print("Downloading ...", SP500_LIST_URL)
+    with open(SP500_LIST_PATH, 'wb') as fin:
+        # print >> fin, f.read()
+        stuff = f.read()
+        # print(stuff)
+        fin.write(stuff)
+    # exit(0)
     return
 
 
 def _load_symbols():
     _download_sp500_list()
     df_sp500 = pd.read_csv(SP500_LIST_PATH)
-    df_sp500.sort('Market Cap', ascending=False, inplace=True)
+    df_sp500.sort_values('Market Cap', ascending=False, inplace=True)
     stock_symbols = df_sp500['Symbol'].unique().tolist()
-    print "Loaded %d stock symbols" % len(stock_symbols)
+    print("Loaded %d stock symbols" % len(stock_symbols))
     return stock_symbols
 
 
@@ -53,33 +57,36 @@ def fetch_prices(symbol, out_name):
     # Format today's date to match Google's finance history api.
     now_datetime = datetime.now().strftime("%b+%d,+%Y")
 
-    BASE_URL = "https://finance.google.com/finance/historical?output=csv&q={0}&startdate=Jan+1%2C+1980&enddate={1}"
+    BASE_URL = "https://www.google.com/finance/historical?output=csv&q={0}&startdate=Jan+1%2C+1980&enddate={1}"
     symbol_url = BASE_URL.format(
-        urllib2.quote(symbol),
-        urllib2.quote(now_datetime, '+')
+        urllib.request.quote(symbol),
+        urllib.request.quote(now_datetime, '+')
     )
-    print "Fetching {} ...".format(symbol)
-    print symbol_url
+    print("Fetching {} ...".format(symbol))
+    print(symbol_url)
 
-    try:
-        f = urllib2.urlopen(symbol_url)
-        with open(out_name, 'w') as fin:
-            print >> fin, f.read()
-    except urllib2.HTTPError:
-        print "Failed when fetching {}".format(symbol)
-        return False
+    # try:
+    print("Trying:",symbol_url)
+    f = urllib.request.urlopen(symbol_url)
+    with open(out_name, 'wb') as fin:
+        # print >> fin, f.read()
+        stuff = f.read()
+        fin.write(stuff)
+# except urllib.request.HTTPError:
+    #     print("Failed when fetching {}".format(symbol))
+    #     return False
 
     data = pd.read_csv(out_name)
     if data.empty:
-        print "Remove {} because the data set is empty.".format(out_name)
+        print("Remove {} because the data set is empty.".format(out_name))
         os.remove(out_name)
     else:
         dates = data.iloc[:,0].tolist()
-        print "# Fetched rows: %d [%s to %s]" % (data.shape[0], dates[-1], dates[0])
+        print("# Fetched rows: %d [%s to %s]" % (data.shape[0], dates[-1], dates[0]))
 
     # Take a rest
     sleep_time = random.randint(*RANDOM_SLEEP_TIMES)
-    print "Sleeping ... %ds" % sleep_time
+    print("Sleeping ... %ds" % sleep_time)
     time.sleep(sleep_time)
     return True
 
@@ -97,14 +104,14 @@ def main(continued):
     for idx, sym in enumerate(symbols):
         out_name = os.path.join(DATA_DIR, sym + ".csv")
         if continued and os.path.exists(out_name):
-            print "Fetched", sym
+            print("Fetched", sym)
             continue
 
         succeeded = fetch_prices(sym, out_name)
         num_failure += int(not succeeded)
 
         if idx % 10 == 0:
-            print "# Failures so far [%d/%d]: %d" % (idx + 1, len(symbols), num_failure)
+            print("# Failures so far [%d/%d]: %d" % (idx + 1, len(symbols), num_failure))
 
 
 if __name__ == "__main__":
